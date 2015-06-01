@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="237.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="bakalaurinis.GUIController">
+   <children>
+      <Pane layoutY="-2.0" prefHeight="400.0" prefWidth="237.0">
+         <children>
+            <VBox prefHeight="400.0" prefWidth="237.0" spacing="10.0">
+               <children>
+                  <HBox prefHeight="31.0" prefWidth="237.0" spacing="10.0">
+                     <children>
+                        <Label prefHeight="34.0" prefWidth="101.0" text="Camera name" />
+                        <TextField prefHeight="31.0" prefWidth="126.0" />
+                     </children>
+                     <padding>
+                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                     </padding>
+                  </HBox>
+                  <HBox prefHeight="31.0" prefWidth="237.0" spacing="10.0">
+                     <children>
+                        <Label prefHeight="34.0" prefWidth="101.0" text="Port to use" />
+                        <TextField prefHeight="31.0" prefWidth="126.0" />
+                     </children>
+                     <padding>
+                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                     </padding>
+                  </HBox>
+                  <Label prefHeight="119.0" prefWidth="237.0" text="To add control of new Camera&#10;write camera name, and port&#10;camera will be using ">
+                     <VBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </VBox.margin>
+                  </Label>
+                  <HBox prefHeight="95.0" prefWidth="237.0">
+                     <children>
+                        <Button mnemonicParsing="false" prefHeight="81.0" prefWidth="240.0" text="Accept">
+                           <HBox.margin>
+                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                           </HBox.margin>
+                        </Button>
+                     </children>
+                     <VBox.margin>
+                        <Insets />
+                     </VBox.margin>
+                  </HBox>
+               </children>
+            </VBox>
+         </children>
+      </Pane>
+   </children>
+</AnchorPane>

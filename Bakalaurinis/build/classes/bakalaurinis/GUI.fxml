@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.net.*?>
+<?import java.util.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane id="AnchorPane" fx:id="main" prefHeight="907.0" prefWidth="1082.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="bakalaurinis.GUIController">
+   <children>
+      <ToolBar layoutX="14.0" layoutY="332.0" prefHeight="411.0" prefWidth="271.0" AnchorPane.leftAnchor="14.0">
+         <items>
+            <VBox>
+               <children>
+                  <HBox prefHeight="62.0" prefWidth="240.0" spacing="40.0">
+                     <children>
+                        <Label alignment="CENTER" contentDisplay="CENTER" prefHeight="33.0" prefWidth="107.0" text="PORT" />
+                        <ChoiceBox fx:id="port" prefHeight="31.0" prefWidth="165.0" />
+                     </children>
+                  </HBox>
+                  <HBox layoutX="10.0" layoutY="10.0" prefHeight="69.0" prefWidth="240.0" spacing="10.0">
+                     <children>
+                        <Label prefHeight="42.0" prefWidth="140.0" text="BoudRate" />
+                        <ChoiceBox fx:id="boudRate" prefHeight="39.0" prefWidth="167.0" />
+                     </children>
+                  </HBox>
+                  <HBox layoutX="10.0" layoutY="110.0" prefHeight="64.0" prefWidth="240.0" spacing="5.0">
+                     <children>
+                        <Button fx:id="connect" mnemonicParsing="false" onMouseClicked="#connectDevice" prefHeight="43.0" prefWidth="108.0" text="Connect" />
+                        <Button fx:id="disconnect" mnemonicParsing="false" onMouseClicked="#disconnectDevice" prefHeight="44.0" prefWidth="121.0" text="Disconnect" />
+                     </children>
+                  </HBox>
+                  <Separator prefWidth="200.0" />
+                  <HBox layoutX="10.0" layoutY="257.0" prefHeight="61.0" prefWidth="240.0" spacing="5.0">
+                     <children>
+                        <Button fx:id="robotAdd" mnemonicParsing="false" onMouseClicked="#addRobotAgent" prefHeight="43.0" prefWidth="108.0" text="New Robot" />
+                        <Button fx:id="cameraAdd" mnemonicParsing="false" onMouseClicked="#addCameraAgent" prefHeight="44.0" prefWidth="121.0" text="New Camera" />
+                     </children>
+                  </HBox>
+                  <HBox layoutX="10.0" layoutY="72.0" prefHeight="69.0" prefWidth="240.0" spacing="10.0">
+                     <children>
+                        <Label prefHeight="42.0" prefWidth="64.0" text="Robot" />
+                        <ChoiceBox fx:id="robotChoice" prefHeight="56.0" prefWidth="104.0" />
+                        <Button fx:id="removeRobot" mnemonicParsing="false" onMouseClicked="#removeRobotAgent" prefHeight="54.0" prefWidth="55.0" />
+                     </children>
+                  </HBox>
+                  <HBox layoutX="10.0" layoutY="266.0" prefHeight="69.0" prefWidth="240.0" spacing="10.0">
+                     <children>
+                        <Label prefHeight="42.0" prefWidth="65.0" text="Camera" />
+                        <ChoiceBox fx:id="cameraChoice" prefHeight="53.0" prefWidth="104.0" />
+                        <Button fx:id="removeCamera" mnemonicParsing="false" onMouseClicked="#removeCameraAgent" prefHeight="52.0" prefWidth="56.0" />
+                     </children>
+                  </HBox>
+               </children>
+            </VBox>
+         </items>
+      </ToolBar>
+      <ScrollPane layoutY="750.0" prefHeight="158.0" prefWidth="1082.0">
+         <content>
+          <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="155.0" prefWidth="1080.0">
+               <children>
+                  <TextArea fx:id="log" layoutX="-9.0" layoutY="-1.0" prefHeight="158.0" prefWidth="1090.0" />
+               </children>
+            </AnchorPane>
+         </content>
+      </ScrollPane>
+      <VBox layoutX="8.0" prefHeight="338.0" prefWidth="687.0">
+         <children>
+            <HBox prefHeight="337.0" prefWidth="694.0">
+               <children>
+                  <ScrollPane layoutX="664.0" prefHeight="337.0" prefWidth="643.0">
+                    <content>
+                      <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="285.0" prefWidth="539.0">
+                           <children>
+                              <ListView fx:id="orderList" layoutX="-1.0" prefHeight="287.0" prefWidth="541.0" />
+                           </children>
+                        </AnchorPane>
+                    </content>
+                  </ScrollPane>
+                  <VBox prefHeight="337.0" prefWidth="229.0" spacing="10.0">
+                     <children>
+                        <Button fx:id="reset" mnemonicParsing="false" onMouseClicked="#resetOrder" prefHeight="44.0" prefWidth="129.0" text="RESET" />
+                        <Button fx:id="start" mnemonicParsing="false" onMouseClicked="#startOrder" prefHeight="43.0" prefWidth="156.0" text="START" />
+                        <Button fx:id="stop" mnemonicParsing="false" onMouseClicked="#stopOrder" prefHeight="42.0" prefWidth="130.0" text="STOP" />
+                        <Button fx:id="addOrderList" mnemonicParsing="false" onMouseClicked="#addOrderMap" prefHeight="43.0" prefWidth="143.0" text="ADD" />
+                        <Button fx:id="removeOrderList" mnemonicParsing="false" onMouseClicked="#removeOrderMap" prefHeight="43.0" prefWidth="141.0" text="REMOVE" />
+                     </children>
+                  </VBox>
+               </children>
+            </HBox>
+            <HBox spacing="10.0">
+               <children>
+                  <CheckBox fx:id="confirmRepeat" mnemonicParsing="false" prefHeight="31.0" prefWidth="85.0" text="Repeat" />
+                  <TextField fx:id="numberOfRepeats" prefHeight="31.0" prefWidth="59.0" />
+                  <Label prefHeight="31.0" prefWidth="83.0" text="Order Map:" />
+                  <ChoiceBox fx:id="chooseOrderList" prefHeight="31.0" prefWidth="164.0" />
+                  <Label prefHeight="39.0" prefWidth="112.0" text="Order Controller:" />
+                  <ChoiceBox fx:id="chooseActiveRobot" prefHeight="31.0" prefWidth="114.0" />
+               </children>
+            </HBox>
+         </children>
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+      </VBox>
+      <AnchorPane layoutX="695.0" layoutY="10.0" prefHeight="338.0" prefWidth="320.0">
+         <children>
+            <ImageView fx:id="forward" fitHeight="150.0" fitWidth="200.0" layoutX="118.0" pickOnBounds="true" preserveRatio="true">
+               <image>
+                  <Image url="@../images/forward.png" />
+               </image>
+            </ImageView>
+            <ImageView fx:id="right" fitHeight="150.0" fitWidth="200.0" layoutX="218.0" layoutY="95.0" pickOnBounds="true" preserveRatio="true">
+               <image>
+                  <Image url="@../images/right.png" />
+               </image>
+            </ImageView>
+            <ImageView fx:id="backward" fitHeight="150.0" fitWidth="200.0" layoutX="124.0" layoutY="200.0" pickOnBounds="true" preserveRatio="true">
+               <image>
+                  <Image url="@../images/backward.png" />
+               </image>
+            </ImageView>
+            <ImageView fx:id="left" fitHeight="150.0" fitWidth="200.0" layoutX="20.0" layoutY="95.0" pickOnBounds="true" preserveRatio="true">
+               <image>
+                  <Image url="@../images/left.png" />
+               </image>
+            </ImageView>
+         </children>
+      </AnchorPane>
+      <ImageView fx:id="camera" fitHeight="390.0" fitWidth="616.0" layoutX="352.0" layoutY="353.0" pickOnBounds="true" preserveRatio="true" />
+   </children>
+</AnchorPane>
