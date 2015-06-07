@@ -6,6 +6,7 @@ package directions;
 
 import directions.Directions.DirectionMap;
 import javafx.scene.control.Button;
+import org.zu.ardulink.Link;
 
 /**
  *
@@ -15,6 +16,7 @@ public abstract class Direction implements Directions{
     private DirectionMap path;
     private Boolean active;
     private Button controller;
+    protected Link controllerLink;
 
     public DirectionMap getPath() {
         return path;
@@ -32,7 +34,7 @@ public abstract class Direction implements Directions{
         this.active = active;
     }
 
-    public Direction(DirectionMap path) {
+    public Direction(DirectionMap path, Link link) {
         this.path = path;
     }
 

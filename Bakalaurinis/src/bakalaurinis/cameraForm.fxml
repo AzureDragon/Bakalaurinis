@@ -5,7 +5,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="237.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="bakalaurinis.GUIController">
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="237.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <Pane layoutY="-2.0" prefHeight="400.0" prefWidth="237.0">
          <children>
@@ -14,7 +14,7 @@
                   <HBox prefHeight="31.0" prefWidth="237.0" spacing="10.0">
                      <children>
                         <Label prefHeight="34.0" prefWidth="101.0" text="Camera name" />
-                        <TextField prefHeight="31.0" prefWidth="126.0" />
+                        <TextField fx:id="cameraName" prefHeight="31.0" prefWidth="126.0" />
                      </children>
                      <padding>
                         <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
@@ -22,8 +22,8 @@
                   </HBox>
                   <HBox prefHeight="31.0" prefWidth="237.0" spacing="10.0">
                      <children>
-                        <Label prefHeight="34.0" prefWidth="101.0" text="Port to use" />
-                        <TextField prefHeight="31.0" prefWidth="126.0" />
+                        <Label prefHeight="34.0" prefWidth="101.0" text="Device to use" />
+                        <ChoiceBox fx:id="cameraDeviceAdd" prefHeight="31.0" prefWidth="124.0" />
                      </children>
                      <padding>
                         <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
@@ -36,7 +36,7 @@
                   </Label>
                   <HBox prefHeight="95.0" prefWidth="237.0">
                      <children>
-                        <Button mnemonicParsing="false" prefHeight="81.0" prefWidth="240.0" text="Accept">
+                        <Button mnemonicParsing="false" onMouseClicked="#cameraAddEvent" prefHeight="81.0" prefWidth="240.0" text="Accept">
                            <HBox.margin>
                               <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
                            </HBox.margin>

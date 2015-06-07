@@ -4,14 +4,16 @@
  */
 package directions;
 
+import org.zu.ardulink.Link;
+
 /**
  *
  * @author AzureDragon
  */
 public class Left extends Direction implements Directions {
     
-    public Left(DirectionMap path) {
-        super(path);
+    public Left(DirectionMap path, Link link) {
+        super(path, link);
     }
     
     @Override

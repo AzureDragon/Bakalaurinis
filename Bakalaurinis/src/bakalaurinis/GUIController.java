@@ -9,8 +9,11 @@ import baseDataStructures.Order;
 import baseDataStructures.Robot;
 import com.github.sarxos.webcam.Webcam;
 import com.github.sarxos.webcam.WebcamMotionDetector;
+import com.github.sarxos.webcam.WebcamPanel;
+import com.github.sarxos.webcam.WebcamResolution;
 import directions.Directions;
 import directions.Directions.DirectionMap;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
@@ -26,12 +29,16 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.application.Platform;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.concurrent.WorkerStateEvent;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -61,6 +68,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import jssc.SerialPortList;
 import org.zu.ardulink.Link;
@@ -124,11 +132,13 @@ public class GUIController implements Initializable {
     Button robotAdd;
     @FXML
     Button cameraAdd;
+    @FXML
+    Pane panelCamera;
     ObservableList<String> connectedDeviceList = FXCollections.observableArrayList();
     ObservableList<String> boudRateList = FXCollections.observableArrayList();
     private ScheduledExecutorService scheduledPool = Executors.newScheduledThreadPool(10);
     private String DEFAULT_CHOOSEN_DEVICE = "DEVICE";
-    private Link connectionLink = Link.getDefaultInstance();
+    public Link connectionLink = Link.getDefaultInstance();
     private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
     private static String leftOn = "images/left_on.png";
     private static String leftOff = "images/left.png";
@@ -147,13 +157,65 @@ public class GUIController implements Initializable {
     private static List<Robot> robotList = new ArrayList<>();
     private static List<Camera> cameraList = new ArrayList<>();
     private RunnableDemo R2;
+    private String cameraListPromptText = "Choose Camera";
+    private Webcam webCam = null;
+    private boolean stopCamera = false;
+    private BufferedImage grabbedImage;
+    private ObjectProperty<Image> imageProperty = new SimpleObjectProperty<Image>();
 
     /**
      * Initializes the controller class.
      */
     public void setStage(Stage stage) {
         this.stage = stage;
-        //  stage.addEventHandler(KeyEvent.ANY, keyListener);
+    }
+
+    void addCamera(Camera camera) {
+        cameraList.add(camera);
+        ObservableList<String> cameraObservableList = FXCollections.observableArrayList();
+        for (Camera cameraName : cameraList) {
+            cameraObservableList.addAll(cameraName.getCameraName());
+        }
+        cameraChoice.setItems(cameraObservableList);
+        cameraChoice.getSelectionModel().select(cameraObservableList.get(cameraObservableList.size() - 1));
+    }
+
+    private void generateOrderMap() {
+        ObservableList<ColorRectCell> data = FXCollections.observableArrayList();
+        orderListMap.add(new ArrayList<Order>());
+        orderList.setItems(data);
+
+        for (int i = 0; i < 30; i++) {
+            orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).add(new Order());
+            orderList.getItems().add(new ColorRectCell(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).get(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).size() - 1)).updateItem());
+        }
+    }
+
+    private class WebCamInfo {
+
+        private String webCamName;
+        private int webCamIndex;
+
+        public String getWebCamName() {
+            return webCamName;
+        }
+
+        public void setWebCamName(String webCamName) {
+            this.webCamName = webCamName;
+        }
+
+        public int getWebCamIndex() {
+            return webCamIndex;
+        }
+
+        public void setWebCamIndex(int webCamIndex) {
+            this.webCamIndex = webCamIndex;
+        }
+
+        @Override
+        public String toString() {
+            return webCamName;
+        }
     }
 
     @Override
@@ -172,7 +234,6 @@ public class GUIController implements Initializable {
 
         scheduledPool.scheduleAtFixedRate(new InformationRefreshChecker(), 1, 1, TimeUnit.SECONDS);
         camera.setImage(new Image("images/black.bmp"));
-        // scheduledPool.scheduleWithFixedDelay(new webcamCapture(), 100, 100, TimeUnit.MILLISECONDS);
 
 
         ObservableList<String> deviceList = FXCollections.observableArrayList();
@@ -183,39 +244,187 @@ public class GUIController implements Initializable {
 
         orderListMap = new ArrayList<>();
 
-
-//        WebcamMotionDetector detector = new WebcamMotionDetector(Webcam.getDefault());
-//        detector.setInterval(100); // one check per 100 ms
-//           //    BufferedImage image = ConverterFactory.convertToType(detector.getWebcam().getImage(), BufferedImage.TYPE_3BYTE_BGR);
-//   //     camera.setImage(detector.getWebcam().getImage());
         ObservableList list = FXCollections.observableArrayList();
-        list.add("camera1");
-        list.add("camera2");
         cameraChoice.setItems(list);
+        cameraChoice.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>() {
+            @Override
+            public void changed(ObservableValue<? extends String> ov, String t, String t1) {
+                initializeWebCam(Webcam.getWebcamByName(cameraList.get(cameraChoice.getSelectionModel().getSelectedIndex()).getPortName()));
+            }
+        });
+
+
+        robotChoice.setItems(list);
 
         ObservableList list3 = FXCollections.observableArrayList();
-        list3.add("orderMap1");
-        list3.add("orderMap1");
+        list3.add("orderMap");
         chooseOrderList.setItems(list3);
+        chooseOrderList.getSelectionModel().select(0);
 
         removeRobot.setGraphic(reformatPictureSize(remove));
         removeCamera.setGraphic(reformatPictureSize(remove));
+        generateOrderMap();
 
-        ObservableList<String> data = FXCollections.observableArrayList(
-                "chocolate", "salmon", "gold", "coral", "darkorchid",
-                "darkgoldenrod", "lightsalmon", "black", "rosybrown", "blue",
-                "blueviolet", "brown");
-        orderList.setItems(data);
+    }
 
-        orderList.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
-            @Override
-            public ListCell<String> call(ListView<String> list) {
-                orderListMap.add(createNewOrderList());
-                for(int i = 0; i < orderListMap.size(); i++)
-                    new ColorRectCell(orderListMap.get(orderListMap.size() - 1).get(i));
-                return;
-            }
-        });
+    public class ColorRectCell extends ListCell {
+
+        private Order order;
+
+        public ColorRectCell(Order controller) {
+            this.order = controller;
+            controller.setCell(this);
+        }
+
+        public Pane updateItem() {
+            Pane pane = new Pane();
+            HBox box = new HBox();
+            VBox vBox = new VBox();
+            final Button leftButton = new Button();
+            final Button forwardButton = new Button();
+            final Button backwardButton = new Button();
+            final Button rightButton = new Button();
+            final Button increaseButton = new Button("^");
+            final Button decreaseButton = new Button("˅");
+            final Button upButton = new Button("^");
+            final Button downButton = new Button("˅");
+            final TextField estimatedTime = new TextField(Integer.toString(order.getDuration()));
+            final Button enableButton = new Button();
+            final Button removeButton = new Button();
+
+            leftButton.setGraphic(reformatPictureSize(leftOff));
+            forwardButton.setGraphic(reformatPictureSize(forwardOff));
+            backwardButton.setGraphic(reformatPictureSize(backwardOff));
+            rightButton.setGraphic(reformatPictureSize(rightOff));
+            enableButton.setGraphic(reformatPictureSize(disable));
+            removeButton.setGraphic(reformatPictureSize(remove));
+            estimatedTime.setPrefColumnCount(4);
+
+            upButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    order.setDuration(order.getDuration() + 1);
+                    estimatedTime.setText(Integer.toString(order.getDuration()));
+                }
+            });
+            downButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    order.setDuration(order.getDuration() - 1);
+                    estimatedTime.setText(Integer.toString(order.getDuration()));
+                }
+            });
+
+            leftButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    if (order.getMoveDirections().contains(DirectionMap.LEFT)) {
+                        leftButton.setGraphic(reformatPictureSize(leftOff));
+                        order.getMoveDirections().remove(DirectionMap.LEFT);
+                    } else {
+                        leftButton.setGraphic(reformatPictureSize(leftOn));
+                        order.getMoveDirections().add(DirectionMap.LEFT);
+                        rightButton.setGraphic(reformatPictureSize(rightOff));
+                        order.getMoveDirections().remove(DirectionMap.RIGHT);
+                    }
+                }
+            });
+            forwardButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    if (order.getMoveDirections().contains(DirectionMap.FORWARD)) {
+                        forwardButton.setGraphic(reformatPictureSize(forwardOff));
+                        order.getMoveDirections().remove(DirectionMap.FORWARD);
+                    } else {
+                        forwardButton.setGraphic(reformatPictureSize(forwardOn));
+                        order.getMoveDirections().add(DirectionMap.FORWARD);
+                        order.getMoveDirections().remove(DirectionMap.BACKWARD);
+                        backwardButton.setGraphic(reformatPictureSize(backwardOff));
+                    }
+                }
+            });
+            backwardButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    if (order.getMoveDirections().contains(DirectionMap.BACKWARD)) {
+                        backwardButton.setGraphic(reformatPictureSize(backwardOff));
+                        order.getMoveDirections().remove(DirectionMap.BACKWARD);
+                    } else {
+                        backwardButton.setGraphic(reformatPictureSize(backwardOn));
+                        order.getMoveDirections().add(DirectionMap.BACKWARD);
+                        forwardButton.setGraphic(reformatPictureSize(forwardOff));
+                        order.getMoveDirections().remove(DirectionMap.FORWARD);
+                    }
+                }
+            });
+            rightButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    if (order.getMoveDirections().contains(DirectionMap.RIGHT)) {
+                        rightButton.setGraphic(reformatPictureSize(rightOff));
+                        order.getMoveDirections().remove(DirectionMap.RIGHT);
+                    } else {
+                        rightButton.setGraphic(reformatPictureSize(rightOn));
+                        order.getMoveDirections().add(DirectionMap.RIGHT);
+                        leftButton.setGraphic(reformatPictureSize(leftOff));
+                        order.getMoveDirections().remove(DirectionMap.LEFT);
+                    }
+                }
+            });
+            enableButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    if (order.getActive()) {
+                        enableButton.setGraphic(reformatPictureSize(disable));
+                        order.setActive(Boolean.FALSE);
+                    } else {
+                        enableButton.setGraphic(reformatPictureSize(accept));
+                        order.setActive(Boolean.TRUE);
+                    }
+                }
+            });
+            increaseButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    order.setDuration(order.getDuration() + 1);
+                    estimatedTime.setText(Integer.toString(order.getDuration()));
+                }
+            });
+            decreaseButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    order.setDuration(order.getDuration() - 1);
+                    estimatedTime.setText(Integer.toString(order.getDuration()));
+                }
+            });
+
+            estimatedTime.textProperty().addListener(new ChangeListener<String>() {
+                @Override
+                public void changed(ObservableValue<? extends String> ov, String t, String t1) {
+                    order.setDuration(Integer.parseInt(estimatedTime.getText()));
+                }
+            });
+            removeButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent event) {
+                    orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).remove(order);
+                }
+            });
+
+            vBox.getChildren().addAll(increaseButton, decreaseButton);
+            leftButton.setPrefSize(50, 50);
+            forwardButton.setPrefSize(50, 50);
+            backwardButton.setPrefSize(50, 50);
+            rightButton.setPrefSize(50, 50);
+            VBox controller = new VBox();
+            controller.getChildren().addAll(upButton, downButton);
+            box.getChildren().addAll(controller, leftButton, forwardButton, backwardButton, rightButton, vBox, estimatedTime, enableButton, removeButton);
+            box.setSpacing(5);
+            pane.getChildren().add(box);
+            setGraphic(pane);
+
+            return pane;
+        }
     }
 
     @FXML
@@ -240,6 +449,15 @@ public class GUIController implements Initializable {
 
     @FXML
     private void resetOrder(MouseEvent event) {
+        List<Order> order = orderListMap.get(orderList.getSelectionModel().getSelectedIndex());
+        orderList.getItems().removeAll(orderList.getItems());
+        for (int i = 0; i < order.size(); i++) {
+            order.get(i).setDuration(0);
+            order.get(i).setActive(Boolean.FALSE);
+            order.get(i).setMoveDirections(new ArrayList());
+
+            orderList.getItems().add(new ColorRectCell(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).get(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).size() - 1)).updateItem());
+        }
     }
 
     @FXML
@@ -251,7 +469,7 @@ public class GUIController implements Initializable {
     private void startOrder(MouseEvent event) {
 
         log.setText(log.getText() + "[" + sdf.format(Calendar.getInstance().getTime()) + "] Order procceding starting on " + chooseOrderList.getSelectionModel().getSelectedItem().toString() + "\n");
-        R2 = new RunnableDemo();
+        R2 = new RunnableDemo(orderListMap.get(orderList.getSelectionModel().getSelectedIndex()));
         R2.start();
     }
 
@@ -267,29 +485,23 @@ public class GUIController implements Initializable {
         chooseActiveRobot.setValue(robotList.get(robotListObservable.size() - 1).getName());
     }
 
-    private List<Order> createNewOrderList() {
-        List<Order> list = new ArrayList<>();
-        for (int i = 0; i < 30; i++) {
-            list.add(new Order());
-        }
-        return list;
-    }
-
     class RunnableDemo implements Runnable {
 
         private Thread t;
+        private List<Order> orders;
 
-        RunnableDemo() {
+        RunnableDemo(List<Order> orders) {
+            this.orders = orders;
         }
 
         @Override
         public void run() {
             System.out.println("i am alive");
             try {
-                for (int i = 0; i < moveList.size(); i++) {
-                    if (moveList.get(i).getActive()) {
-                        for (int j = 0; j < moveList.get(i).getDuration(); j++) {
-                            scheduledPool.execute(new moveRobot(moveList.get(i).getMoveDirections()));
+                for (int i = 0; i < orders.size(); i++) {
+                    if (orders.get(i).getActive()) {
+                        for (int j = 0; j < orders.get(i).getDuration(); j++) {
+                            scheduledPool.execute(new moveRobot(orders.get(i).getMoveDirections()));
                             Thread.sleep(1000);
                         }
                     }
@@ -314,10 +526,36 @@ public class GUIController implements Initializable {
 
     @FXML
     private void addOrderMap(MouseEvent event) {
+        String orderMapName = "orderMap";
+        Integer k = 1;
+        Boolean t = Boolean.TRUE;
+        String tmpName = orderMapName;
+        orderListMap.add(new ArrayList<Order>());
+        while (t) {
+            if (chooseOrderList.getItems().contains(tmpName)) {
+                tmpName = orderMapName + k;
+                k++;
+            } else {
+                t = Boolean.FALSE;
+                chooseOrderList.getItems().add(tmpName);
+                chooseOrderList.getSelectionModel().selectLast();
+
+                generateOrderMap();
+            }
+        }
     }
 
     @FXML
     private void removeOrderMap(MouseEvent event) {
+        orderListMap.remove(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()));
+        orderList.getItems().removeAll(orderList.getItems());
+        chooseOrderList.getItems().remove(chooseOrderList.getSelectionModel().getSelectedIndex());
+        chooseOrderList.getSelectionModel().selectLast();
+        if (chooseOrderList.getItems().size() > 0) {
+            for (int i = 0; i < orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).size(); i++) {
+                orderList.getItems().add(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).get(i).getCell());
+            }
+        }
     }
 
     @FXML
@@ -331,26 +569,35 @@ public class GUIController implements Initializable {
         stage.setTitle("New Robot Form");
         stage.centerOnScreen();
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.showAndWait();
+        stage.show();
     }
 
     @FXML
     private void addCameraAgent(MouseEvent event) throws IOException {
-        stage = new Stage();
-        Parent root = FXMLLoader.load(getClass().getResource("cameraForm.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("cameraForm.fxml"));
+        Stage stage = new Stage();
+        CameraController controller = new CameraController(this, stage);
+        loader.setController(controller);
+        Parent root = (Parent) loader.load();
         stage.setScene(new Scene(root));
-        stage.setTitle("New camera Form");
+        stage.setTitle("New Camera Form");
         stage.centerOnScreen();
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.showAndWait();
+        stage.show();
     }
 
     @FXML
     private void removeRobotAgent(MouseEvent event) {
+        robotList.remove(robotChoice.getSelectionModel().getSelectedIndex());
+        robotChoice.getItems().remove(robotChoice.getSelectionModel().getSelectedIndex());
+        robotChoice.getSelectionModel().selectLast();
     }
 
     @FXML
     private void removeCameraAgent(MouseEvent event) {
+        cameraList.remove(cameraChoice.getSelectionModel().getSelectedIndex());
+        cameraChoice.getItems().remove(cameraChoice.getSelectionModel().getSelectedIndex());
+        cameraChoice.getSelectionModel().selectLast();
     }
 
     @FXML
@@ -378,7 +625,7 @@ public class GUIController implements Initializable {
     }
 
     private void removeAllDevices(ObservableList<String> deviceList) {
-        for (int i = 1; i < deviceList.size(); i++) {
+        for (int i = deviceList.size() - 1; i >= 0; i--) {
             deviceList.remove(i);
         }
     }
@@ -461,161 +708,6 @@ public class GUIController implements Initializable {
         return object != null;
     }
 
-    static class ColorRectCell extends ListCell<String> {
-
-        private Order order;
-
-        public ColorRectCell(Order controller) {
-            this.order = controller;
-        }
-
-        @Override
-        public void updateItem(String item, boolean empty) {
-            super.updateItem(item, empty);
-            if (item != null) {
-                Pane pane = new Pane();
-                HBox box = new HBox();
-                VBox vBox = new VBox();
-                final Button leftButton = new Button();
-                final Button forwardButton = new Button();
-                final Button backwardButton = new Button();
-                final Button rightButton = new Button();
-                final Button increaseButton = new Button("^");
-                final Button decreaseButton = new Button("˅");
-                final Button upButton = new Button("^");
-                final Button downButton = new Button("˅");
-                final TextField estimatedTime = new TextField(Integer.toString(order.getDuration()));
-                final Button enableButton = new Button();
-                final Button removeButton = new Button();
-
-
-                leftButton.setGraphic(reformatPictureSize(leftOff));
-                forwardButton.setGraphic(reformatPictureSize(forwardOff));
-                backwardButton.setGraphic(reformatPictureSize(backwardOff));
-                rightButton.setGraphic(reformatPictureSize(rightOff));
-                enableButton.setGraphic(reformatPictureSize(disable));
-                removeButton.setGraphic(reformatPictureSize(remove));
-                estimatedTime.setPrefColumnCount(4);
-
-                upButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        order.setDuration(order.getDuration() + 1);
-                        estimatedTime.setText(Integer.toString(order.getDuration()));
-                    }
-                });
-                downButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        order.setDuration(order.getDuration() - 1);
-                        estimatedTime.setText(Integer.toString(order.getDuration()));
-                    }
-                });
-
-                leftButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        if (order.getMoveDirections().contains(DirectionMap.LEFT)) {
-                            leftButton.setGraphic(reformatPictureSize(leftOff));
-                            order.getMoveDirections().remove(DirectionMap.LEFT);
-                        } else {
-                            leftButton.setGraphic(reformatPictureSize(leftOn));
-                            order.getMoveDirections().add(DirectionMap.LEFT);
-                        }
-                    }
-                });
-                forwardButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        if (order.getMoveDirections().contains(DirectionMap.FORWARD)) {
-                            forwardButton.setGraphic(reformatPictureSize(forwardOff));
-                            order.getMoveDirections().remove(DirectionMap.FORWARD);
-                        } else {
-                            forwardButton.setGraphic(reformatPictureSize(forwardOn));
-                            order.getMoveDirections().add(DirectionMap.FORWARD);
-                        }
-                    }
-                });
-                backwardButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        if (order.getMoveDirections().contains(DirectionMap.BACKWARD)) {
-                            backwardButton.setGraphic(reformatPictureSize(backwardOff));
-                            order.getMoveDirections().remove(DirectionMap.BACKWARD);
-                        } else {
-                            backwardButton.setGraphic(reformatPictureSize(backwardOn));
-                            order.getMoveDirections().add(DirectionMap.BACKWARD);
-                        }
-                    }
-                });
-                rightButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        if (order.getMoveDirections().contains(DirectionMap.RIGHT)) {
-                            rightButton.setGraphic(reformatPictureSize(rightOff));
-                            order.getMoveDirections().remove(DirectionMap.RIGHT);
-                        } else {
-                            rightButton.setGraphic(reformatPictureSize(rightOn));
-                            order.getMoveDirections().add(DirectionMap.RIGHT);
-                        }
-                    }
-                });
-                enableButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        if (order.getActive()) {
-                            enableButton.setGraphic(reformatPictureSize(disable));
-                            order.setActive(Boolean.FALSE);
-                        } else {
-                            enableButton.setGraphic(reformatPictureSize(accept));
-                            order.setActive(Boolean.TRUE);
-                        }
-                    }
-                });
-                increaseButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        order.setDuration(order.getDuration() + 1);
-                        estimatedTime.setText(Integer.toString(order.getDuration()));
-                    }
-                });
-                decreaseButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        order.setDuration(order.getDuration() - 1);
-                        estimatedTime.setText(Integer.toString(order.getDuration()));
-                    }
-                });
-
-                estimatedTime.textProperty().addListener(new ChangeListener<String>() {
-                    @Override
-                    public void changed(ObservableValue<? extends String> ov, String t, String t1) {
-                        order.setDuration(Integer.parseInt(estimatedTime.getText()));
-                    }
-                });
-                removeButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
-                        moveList.remove(order);
-
-                    }
-                });
-
-                vBox.getChildren().addAll(increaseButton, decreaseButton);
-                leftButton.setPrefSize(50, 50);
-                forwardButton.setPrefSize(50, 50);
-                backwardButton.setPrefSize(50, 50);
-                rightButton.setPrefSize(50, 50);
-                VBox controller = new VBox();
-                controller.getChildren().addAll(upButton, downButton);
-                box.getChildren().addAll(controller, leftButton, forwardButton, backwardButton, rightButton, vBox, estimatedTime, enableButton, removeButton);
-                box.setSpacing(5);
-                pane.getChildren().add(box);
-                setGraphic(pane);
-            }
-        }
-    }
-
     private static ImageView reformatPictureSize(String image) {
         ImageView iv2 = new ImageView();
         iv2.setImage(new Image(image));
@@ -628,80 +720,174 @@ public class GUIController implements Initializable {
     public EventHandler<KeyEvent> keyListener = new EventHandler<KeyEvent>() {
         @Override
         public void handle(KeyEvent event) {
-            System.out.println(event.getEventType());
-            // event.getEventType().equals(KeyEvent.KEY_RELEASED);
             if (event.getCode() == KeyCode.UP || event.getCode() == KeyCode.DOWN
                     || event.getCode() == KeyCode.RIGHT || event.getCode() == KeyCode.LEFT) {
                 try {
                     System.out.println(event.getEventType());
                     switch (event.getCode()) {
                         case UP:
-                            forward.setImage(new Image(forwardOn));
+                            if (event.getEventType().equals(KeyEvent.KEY_RELEASED)) {
+                                forward.setImage(new Image(forwardOff));
+                            } else {
+                                forward.setImage(new Image(forwardOn));
+                            }
                             break;
                         case LEFT:
-                            left.setImage(new Image(leftOn));
+                            if (event.getEventType().equals(KeyEvent.KEY_RELEASED)) {
+                                left.setImage(new Image(leftOff));
+                            } else {
+                                left.setImage(new Image(leftOn));
+                            }
                             break;
                         case DOWN:
-                            backward.setImage(new Image(backwardOn));
+                            if (event.getEventType().equals(KeyEvent.KEY_RELEASED)) {
+                                backward.setImage(new Image(backwardOff));
+                            } else {
+                                backward.setImage(new Image(backwardOn));
+                            }
                             break;
                         case RIGHT:
-                            right.setImage(new Image(rightOn));
+                            if (event.getEventType().equals(KeyEvent.KEY_RELEASED)) {
+                                right.setImage(new Image(rightOff));
+                            } else {
+                                right.setImage(new Image(rightOn));
+                            }
                             break;
                     }
-                    //event.consume();
-                    System.out.println(event.getCode());
-                    //your code for moving the ship
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                event.consume();
-            } else if (event.getCode() == KeyCode.SPACE) {
-                try {
+                    event.consume();
                     System.out.println(event.getCode());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 event.consume();
-            } else {
-                System.out.println(event.getCode());
             }
         }
     };
-    Task<Integer> task = new Task<Integer>() {
-        @Override
-        protected Integer call() throws Exception {
-            int iterations;
-            for (iterations = 0; iterations < 100000; iterations++) {
-                if (isCancelled()) {
-                    break;
-                }
-                System.out.println("Iteration " + iterations);
-            }
-            return iterations;
-        }
-    };
 
-    private class webcamCapture implements Runnable {
+    protected void startWebCamStream() {
 
-        @Override
-        public void run() {
+        stopCamera = false;
 
-            WebcamMotionDetector detector = new WebcamMotionDetector(Webcam.getDefault());
-            BufferedImage bf = detector.getWebcam().getImage();
+        Task<Void> task = new Task<Void>() {
+            @Override
+            protected Void call() throws Exception {
 
+                while (!stopCamera) {
+                    try {
+                        if ((grabbedImage = webCam.getImage()) != null) {
 
-            WritableImage wr = null;
-            if (bf != null) {
-                wr = new WritableImage(bf.getWidth(), bf.getHeight());
-                PixelWriter pw = wr.getPixelWriter();
-                for (int x = 0; x < bf.getWidth(); x++) {
-                    for (int y = 0; y < bf.getHeight(); y++) {
-                        pw.setArgb(x, y, bf.getRGB(x, y));
+                            Platform.runLater(new Runnable() {
+                                @Override
+                                public void run() {
+                                    checkGrabbedImage(grabbedImage);
+                                    Image mainiamge = SwingFXUtils.toFXImage(grabbedImage, null);
+                                    imageProperty.set(mainiamge);
+                                }
+
+                                private void checkGrabbedImage(BufferedImage grabbedImage) {
+
+                                    for (int x = 0; x < grabbedImage.getWidth(); x++) {
+                                        for (int y = 0; y < grabbedImage.getHeight(); y++) {
+                                            int rgb = grabbedImage.getRGB(x, y);
+                                            float hsb[] = new float[3];
+                                            int r = (rgb >> 16) & 0xFF;
+                                            int g = (rgb >> 8) & 0xFF;
+                                            int b = (rgb) & 0xFF;
+                                            Color.RGBtoHSB(r, g, b, hsb);
+
+                                            if (hsb[1] < 0.1 && hsb[2] > 0.9) {
+                                                //  System.out.println("WHITE");
+                                            } else if (hsb[2] < 0.1) {
+                                                //    System.out.println("BLACK");
+                                            } else {
+                                                float deg = hsb[0] * 360;
+                                                if (deg >= 0 && deg < 30) {
+                                                    // System.out.println("RED");
+                                                } else if (deg >= 30 && deg < 90) {
+                                                    // System.out.println("YELLOW");
+                                                } else if (deg >= 90 && deg < 150) {
+                                                    System.out.println("GREEN");
+                                                } else if (deg >= 150 && deg < 210) {
+                                                    //  System.out.println("CYAN");
+                                                } else if (deg >= 210 && deg < 270) {
+                                                    // System.out.println("BLUE");
+                                                } else if (deg >= 270 && deg < 330) {
+                                                    // System.out.println("MAGENTA");
+                                                } else {
+                                                    //  System.out.println("RED");
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+
+                            grabbedImage.flush();
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
-            }
 
-            camera.setImage(wr);
-        }
+                return null;
+            }
+        };
+
+        Thread th = new Thread(task);
+        th.setDaemon(true);
+        th.start();
+        camera.imageProperty().bind(imageProperty);
+
+    }
+
+    protected void initializeWebCam(final Webcam cam) {
+
+        Task<Void> webCamTask = new Task<Void>() {
+            @Override
+            protected Void call() throws Exception {
+
+                if (webCam != null) {
+                    disposeWebCamCamera();
+                }
+                webCam = cam;
+                webCam.open();
+                startWebCamStream();
+
+                return null;
+            }
+        };
+
+        Thread webCamThread = new Thread(webCamTask);
+        webCamThread.setDaemon(true);
+        webCamThread.start();
+    }
+
+    protected void disposeWebCamCamera() {
+        stopCamera = true;
+        webCam.close();
+    }
+
+    public static List<List<Order>> getOrderListMap() {
+        return orderListMap;
+    }
+
+    public static void setOrderListMap(List<List<Order>> orderListMap) {
+        GUIController.orderListMap = orderListMap;
+    }
+
+    public static List<Robot> getRobotList() {
+        return robotList;
+    }
+
+    public static void setRobotList(List<Robot> robotList) {
+        GUIController.robotList = robotList;
+    }
+
+    public static List<Camera> getCameraList() {
+        return cameraList;
+    }
+
+    public static void setCameraList(List<Camera> cameraList) {
+        GUIController.cameraList = cameraList;
     }
 }

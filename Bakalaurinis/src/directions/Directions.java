@@ -4,8 +4,6 @@
  */
 package directions;
 
-import javafx.scene.control.Button;
-
 /**
  *
  * @author AzureDragon

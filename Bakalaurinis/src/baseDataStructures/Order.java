@@ -4,6 +4,8 @@
  */
 package baseDataStructures;
 
+import bakalaurinis.GUIController;
+import bakalaurinis.GUIController.ColorRectCell;
 import directions.Directions.DirectionMap;
 import java.util.ArrayList;
 
@@ -16,6 +18,7 @@ public class Order {
     private ArrayList<DirectionMap> moveDirections;
     private Integer duration;
     private Boolean active;
+    private ColorRectCell cell;
 
     public Order(ArrayList<DirectionMap> moveDirections, Integer duration, Boolean active) {
         this.moveDirections = moveDirections;
@@ -53,4 +56,14 @@ public class Order {
     public void setActive(Boolean active) {
         this.active = active;
     }
+
+    public ColorRectCell getCell() {
+        return cell;
+    }
+
+    public void setCell(ColorRectCell cell) {
+        this.cell = cell;
+    }
+    
+    
 }

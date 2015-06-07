@@ -12,8 +12,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
-import com.github.sarxos.webcam.Webcam;
-import com.github.sarxos.webcam.WebcamMotionDetector;
 import com.github.sarxos.webcam.WebcamMotionEvent;
 import com.github.sarxos.webcam.WebcamMotionListener;
 import javafx.scene.input.KeyEvent;
@@ -36,23 +34,22 @@ public class Bakalaurinis extends Application implements WebcamMotionListener {
 
     @Override
     public void start(Stage stage) throws Exception {
+       
+        
         currentStage = stage;
         System.setProperty("file.encoding", "UTF-8");
         FXMLLoader loader = new FXMLLoader(getClass().getResource("GUI.fxml"));
 
         Parent root = (Parent) loader.load();
-        GUIController gui = (GUIController) loader.getController();
+        final GUIController gui = (GUIController) loader.getController();
 
         gui.setStage(currentStage);
         
         setProgramKillOperators();
         prepareScene(root);
-        currentStage.addEventHandler(KeyEvent.ANY, gui.keyListener);
-//currentStage.getScene().setOnKeyTyped(gui.keyListener);//.setOnKeyPressed(gui.keyListener);
-//        WebcamMotionDetector detector = new WebcamMotionDetector(Webcam.getDefault());
-     //   detector.setInterval(100); // one check per 100 ms
-     //   detector.addMotionListener(this);
-     //   detector.start();
+
+        currentStage.getScene().addEventFilter(KeyEvent.ANY, gui.keyListener);
+        
     }
 
     /**
@@ -69,7 +66,6 @@ public class Bakalaurinis extends Application implements WebcamMotionListener {
 
     private void prepareScene(Parent root) {
         Scene scene = new Scene(root);
-       // scene.getStylesheets().add("lt/dekbera/mobileClient/styleSheets/MobileClient.css");
         currentStage.setScene(scene);
         currentStage.show();
     }

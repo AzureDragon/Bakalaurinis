@@ -33,5 +33,4 @@ public class Camera {
         this.portName = portName;
     }
     
-    
 }
