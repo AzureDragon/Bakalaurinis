@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<jnlp spec="1.0" xmlns:jfx="http://javafx.com" href="Bakalaurinis.jnlp">
+  <information>
+    <title>Bakalaurinis</title>
+    <vendor>AzureDragon</vendor>
+    <description>Sample JavaFX 2.0 application.</description>
+    <offline-allowed/>
+  </information>
+  <resources>
+    <jfx:javafx-runtime version="2.2+" href="http://javadl.sun.com/webapps/download/GetFile/javafx-latest/windows-i586/javafx2.jnlp"/>
+  </resources>
+  <resources>
+    <j2se version="1.6+" java-vm-args="-Djava.library.path="C:\Program Files\Java\jre8\bin" "  href="http://java.sun.com/products/autodl/j2se"/>
+    <jar href="Bakalaurinis.jar" size="5327448" download="eager" />
+    <jar href="lib/RXTXcomm.jar" size="60984" download="eager" />
+    <jar href="lib/ardulink.jar" size="193772" download="eager" />
+    <jar href="lib/bridj-0.6.2.jar" size="878674" download="eager" />
+    <jar href="lib/jssc.jar" size="152418" download="eager" />
+    <jar href="lib/slf4j-api-1.7.2.jar" size="26083" download="eager" />
+    <jar href="lib/webcam-capture-0.3.11-20150219.205650-6.jar" size="413847" download="eager" />
+  </resources>
+  <applet-desc  width="800" height="600" main-class="com.javafx.main.NoJavaFXFallback"  name="Bakalaurinis" >
+    <param name="requiredFXVersion" value="2.2+"/>
+  </applet-desc>
+  <jfx:javafx-desc  width="800" height="600" main-class="bakalaurinis.Bakalaurinis"  name="Bakalaurinis" />
+  <update check="always"/>
+</jnlp>

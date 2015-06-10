@@ -11,8 +11,12 @@ import com.github.sarxos.webcam.Webcam;
 import com.github.sarxos.webcam.WebcamMotionDetector;
 import com.github.sarxos.webcam.WebcamPanel;
 import com.github.sarxos.webcam.WebcamResolution;
+import directions.Backward;
 import directions.Directions;
 import directions.Directions.DirectionMap;
+import directions.Forward;
+import directions.Left;
+import directions.Right;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -156,12 +160,19 @@ public class GUIController implements Initializable {
     private Stage stage;
     private static List<Robot> robotList = new ArrayList<>();
     private static List<Camera> cameraList = new ArrayList<>();
-    private RunnableDemo R2;
+    private RunnableDemo R2 = null;
     private String cameraListPromptText = "Choose Camera";
     private Webcam webCam = null;
     private boolean stopCamera = false;
     private BufferedImage grabbedImage;
     private ObjectProperty<Image> imageProperty = new SimpleObjectProperty<Image>();
+    private Backward backwardC = null;
+    private Forward forwardC = null;
+    private Left leftC = null;
+    private Right rightC = null;
+    private Boolean checkBlue = Boolean.TRUE;
+    private Boolean checkGreen = Boolean.TRUE;
+    Boolean working = Boolean.FALSE;
 
     /**
      * Initializes the controller class.
@@ -185,9 +196,19 @@ public class GUIController implements Initializable {
         orderListMap.add(new ArrayList<Order>());
         orderList.setItems(data);
 
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 8; i++) {
             orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).add(new Order());
             orderList.getItems().add(new ColorRectCell(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).get(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).size() - 1)).updateItem());
+        }
+    }
+
+    private void start(int index) {
+        if (!working) {
+            working = Boolean.TRUE;
+            log.setText(log.getText() + "[" + sdf.format(Calendar.getInstance().getTime()) + "] Order procceding starting on " + chooseOrderList.getItems().get(index) + "\n");
+            R2 = new RunnableDemo(orderListMap.get(index));
+
+            R2.start();
         }
     }
 
@@ -254,6 +275,8 @@ public class GUIController implements Initializable {
         });
 
 
+
+
         robotChoice.setItems(list);
 
         ObservableList list3 = FXCollections.observableArrayList();
@@ -264,6 +287,19 @@ public class GUIController implements Initializable {
         removeRobot.setGraphic(reformatPictureSize(remove));
         removeCamera.setGraphic(reformatPictureSize(remove));
         generateOrderMap();
+
+//        chooseOrderList.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>() {
+//            @Override
+//            public void changed(ObservableValue<? extends String> ov, String t, String t1) {
+//                orderList.getItems().removeAll(orderList.getItems());
+//                ObservableList<ColorRectCell> data = FXCollections.observableArrayList();
+//                orderList.setItems(data);
+//
+//                for (int i = 0; i < 30; i++) {
+//                    orderList.getItems().add(new ColorRectCell(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).get(orderListMap.get(chooseOrderList.getSelectionModel().getSelectedIndex()).size() - 1)).updateItem());
+//                }
+//            }
+//        });
 
     }
 
@@ -292,13 +328,15 @@ public class GUIController implements Initializable {
             final Button enableButton = new Button();
             final Button removeButton = new Button();
 
-            leftButton.setGraphic(reformatPictureSize(leftOff));
-            forwardButton.setGraphic(reformatPictureSize(forwardOff));
-            backwardButton.setGraphic(reformatPictureSize(backwardOff));
-            rightButton.setGraphic(reformatPictureSize(rightOff));
-            enableButton.setGraphic(reformatPictureSize(disable));
+
+            leftButton.setGraphic(order.getMoveDirections().contains(DirectionMap.LEFT) ? reformatPictureSize(leftOn) : reformatPictureSize(leftOff));
+            forwardButton.setGraphic(order.getMoveDirections().contains(DirectionMap.FORWARD) ? reformatPictureSize(forwardOn) : reformatPictureSize(forwardOff));
+            backwardButton.setGraphic(order.getMoveDirections().contains(DirectionMap.BACKWARD) ? reformatPictureSize(backwardOn) : reformatPictureSize(backwardOff));
+            rightButton.setGraphic(order.getMoveDirections().contains(DirectionMap.RIGHT) ? reformatPictureSize(rightOn) : reformatPictureSize(rightOff));
+            enableButton.setGraphic(order.getActive() ? reformatPictureSize(accept) : reformatPictureSize(disable));
             removeButton.setGraphic(reformatPictureSize(remove));
             estimatedTime.setPrefColumnCount(4);
+            estimatedTime.setText(Integer.toString(order.getDuration()));
 
             upButton.setOnAction(new EventHandler<ActionEvent>() {
                 @Override
@@ -438,6 +476,10 @@ public class GUIController implements Initializable {
 
             if (connected) {
                 log.setText(log.getText() + "[" + sdf.format(Calendar.getInstance().getTime()) + "] Arduino connected. Connection Status: " + JOptionPane.INFORMATION_MESSAGE + "\n");
+                backwardC = new Backward(DirectionMap.BACKWARD, connectionLink);
+                forwardC = new Forward(DirectionMap.FORWARD, connectionLink);
+                leftC = new Left(DirectionMap.LEFT, connectionLink);
+                rightC = new Right(DirectionMap.RIGHT, connectionLink);
             } else {
 
                 log.setText(log.getText() + "[" + sdf.format(Calendar.getInstance().getTime()) + "] Arduino NOT connected. Connection Status: " + JOptionPane.ERROR_MESSAGE + "\n");
@@ -463,14 +505,12 @@ public class GUIController implements Initializable {
     @FXML
     private void stopOrder(MouseEvent event) {
         R2.kill();
+        R2 = null;
     }
 
     @FXML
     private void startOrder(MouseEvent event) {
-
-        log.setText(log.getText() + "[" + sdf.format(Calendar.getInstance().getTime()) + "] Order procceding starting on " + chooseOrderList.getSelectionModel().getSelectedItem().toString() + "\n");
-        R2 = new RunnableDemo(orderListMap.get(orderList.getSelectionModel().getSelectedIndex()));
-        R2.start();
+        start(chooseOrderList.getSelectionModel().getSelectedIndex());
     }
 
     void addRobot(Robot robot) {
@@ -498,14 +538,25 @@ public class GUIController implements Initializable {
         public void run() {
             System.out.println("i am alive");
             try {
+                //for(int k = 0; k < orders.getRepeatCounter(); k++)
                 for (int i = 0; i < orders.size(); i++) {
                     if (orders.get(i).getActive()) {
                         for (int j = 0; j < orders.get(i).getDuration(); j++) {
-                            scheduledPool.execute(new moveRobot(orders.get(i).getMoveDirections()));
+                            if (orders.get(i) != null) {
+                                scheduledPool.execute(new moveRobot(orders.get(i).getMoveDirections()));
+                            }
                             Thread.sleep(1000);
                         }
+                        moveRobotRight(Boolean.FALSE);
+                        moveRobotLeft(Boolean.FALSE);
+                        moveRobotForward(Boolean.FALSE);
+                        moveRobotBackward(Boolean.FALSE);
                     }
                 }
+                R2 = null;
+                checkBlue = Boolean.TRUE;
+                checkGreen = Boolean.TRUE;
+                working = Boolean.FALSE;
             } catch (InterruptedException e) {
             }
         }
@@ -520,6 +571,7 @@ public class GUIController implements Initializable {
         public void kill() {
             if (t != null) {
                 t.stop();
+                R2 = null;
             }
         }
     }
@@ -538,9 +590,10 @@ public class GUIController implements Initializable {
             } else {
                 t = Boolean.FALSE;
                 chooseOrderList.getItems().add(tmpName);
+                generateOrderMap();
                 chooseOrderList.getSelectionModel().selectLast();
 
-                generateOrderMap();
+
             }
         }
     }
@@ -640,12 +693,13 @@ public class GUIController implements Initializable {
 
         @Override
         public void run() {
-            forward.setImage(new Image(map.contains(DirectionMap.FORWARD) ? forwardOn : forwardOff));
-            backward.setImage(new Image(map.contains(DirectionMap.BACKWARD) ? backwardOn : backwardOff));
-            right.setImage(new Image(map.contains(DirectionMap.RIGHT) ? rightOn : rightOff));
-            left.setImage(new Image(map.contains(DirectionMap.LEFT) ? leftOn : leftOff));
+            moveRobotForward(map.contains(DirectionMap.FORWARD) ? Boolean.TRUE : Boolean.FALSE);
+            moveRobotBackward(map.contains(DirectionMap.BACKWARD) ? Boolean.TRUE : Boolean.FALSE);
+            moveRobotRight(map.contains(DirectionMap.RIGHT) ? Boolean.TRUE : Boolean.FALSE);
+            moveRobotLeft(map.contains(DirectionMap.LEFT) ? Boolean.TRUE : Boolean.FALSE);
+
             if (map.size() > 0) {
-                log.setText(log.getText() + "[" + sdf.format(Calendar.getInstance().getTime()) + "] Robot is moving to " + printMapOrders(map) + "\n");
+                log.setText(log.getText() + "[" + sdf.format(Calendar.getInstance().getTime()) + "] Robot " + robotList.get(robotChoice.getSelectionModel().getSelectedIndex()).getName() + " is moving to " + printMapOrders(map) + "\n");
             } else {
                 log.setText(log.getText() + "[" + sdf.format(Calendar.getInstance().getTime()) + "] No Directions was given to Robot!\n");
             }
@@ -721,41 +775,41 @@ public class GUIController implements Initializable {
         @Override
         public void handle(KeyEvent event) {
             if (event.getCode() == KeyCode.UP || event.getCode() == KeyCode.DOWN
-                    || event.getCode() == KeyCode.RIGHT || event.getCode() == KeyCode.LEFT) {
+                    || event.getCode() == KeyCode.RIGHT || event.getCode() == KeyCode.LEFT || (event.getCode() == KeyCode.UP && event.getCode() == KeyCode.RIGHT)) {
                 try {
-                    System.out.println(event.getEventType());
                     switch (event.getCode()) {
                         case UP:
                             if (event.getEventType().equals(KeyEvent.KEY_RELEASED)) {
-                                forward.setImage(new Image(forwardOff));
+                                moveRobotForward(Boolean.FALSE);
                             } else {
-                                forward.setImage(new Image(forwardOn));
+                                moveRobotForward(Boolean.TRUE);
                             }
+
                             break;
                         case LEFT:
                             if (event.getEventType().equals(KeyEvent.KEY_RELEASED)) {
-                                left.setImage(new Image(leftOff));
+                                moveRobotLeft(Boolean.FALSE);
                             } else {
-                                left.setImage(new Image(leftOn));
+                                moveRobotLeft(Boolean.TRUE);
                             }
                             break;
+
                         case DOWN:
                             if (event.getEventType().equals(KeyEvent.KEY_RELEASED)) {
-                                backward.setImage(new Image(backwardOff));
+                                moveRobotBackward(Boolean.FALSE);
                             } else {
-                                backward.setImage(new Image(backwardOn));
+                                moveRobotBackward(Boolean.TRUE);
                             }
                             break;
                         case RIGHT:
                             if (event.getEventType().equals(KeyEvent.KEY_RELEASED)) {
-                                right.setImage(new Image(rightOff));
+                                moveRobotRight(Boolean.FALSE);
                             } else {
-                                right.setImage(new Image(rightOn));
+                                moveRobotRight(Boolean.TRUE);
                             }
                             break;
                     }
                     event.consume();
-                    System.out.println(event.getCode());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -763,6 +817,62 @@ public class GUIController implements Initializable {
             }
         }
     };
+
+    public void moveRobotForward(Boolean event) {
+        if (!event) {
+            forward.setImage(new Image(forwardOff));
+            if (robotChoice.getItems().size() > 0) {
+                forwardC.stopTo(robotList.get(chooseActiveRobot.getSelectionModel().getSelectedIndex()).getForwardPin());
+            }
+        } else {
+            forward.setImage(new Image(forwardOn));
+            if (robotChoice.getItems().size() > 0) {
+                forwardC.moveTo(robotList.get(chooseActiveRobot.getSelectionModel().getSelectedIndex()).getForwardPin());
+            }
+        }
+    }
+
+    public void moveRobotLeft(Boolean event) {
+        if (!event) {
+            left.setImage(new Image(leftOff));
+            if (robotChoice.getItems().size() > 0) {
+                leftC.stopTo(robotList.get(chooseActiveRobot.getSelectionModel().getSelectedIndex()).getLeftPin());
+            }
+        } else {
+            left.setImage(new Image(leftOn));
+            if (robotChoice.getItems().size() > 0) {
+                leftC.moveTo(robotList.get(chooseActiveRobot.getSelectionModel().getSelectedIndex()).getLeftPin());
+            }
+        }
+    }
+
+    public void moveRobotBackward(Boolean event) {
+        if (!event) {
+            backward.setImage(new Image(backwardOff));
+            if (robotChoice.getItems().size() > 0) {
+                backwardC.stopTo(robotList.get(chooseActiveRobot.getSelectionModel().getSelectedIndex()).getBackwardPin());
+            }
+        } else {
+            backward.setImage(new Image(backwardOn));
+            if (robotChoice.getItems().size() > 0) {
+                backwardC.moveTo(robotList.get(chooseActiveRobot.getSelectionModel().getSelectedIndex()).getBackwardPin());
+            }
+        }
+    }
+
+    public void moveRobotRight(Boolean event) {
+        if (!event) {
+            right.setImage(new Image(rightOff));
+            if (robotChoice.getItems().size() > 0) {
+                rightC.stopTo(robotList.get(chooseActiveRobot.getSelectionModel().getSelectedIndex()).getRightPin());
+            }
+        } else {
+            right.setImage(new Image(rightOn));
+            if (robotChoice.getItems().size() > 0) {
+                rightC.moveTo(robotList.get(chooseActiveRobot.getSelectionModel().getSelectedIndex()).getRightPin());
+            }
+        }
+    }
 
     protected void startWebCamStream() {
 
@@ -785,7 +895,8 @@ public class GUIController implements Initializable {
                                 }
 
                                 private void checkGrabbedImage(BufferedImage grabbedImage) {
-
+                                    int green = 0;
+                                    int blue = 0;
                                     for (int x = 0; x < grabbedImage.getWidth(); x++) {
                                         for (int y = 0; y < grabbedImage.getHeight(); y++) {
                                             int rgb = grabbedImage.getRGB(x, y);
@@ -806,11 +917,13 @@ public class GUIController implements Initializable {
                                                 } else if (deg >= 30 && deg < 90) {
                                                     // System.out.println("YELLOW");
                                                 } else if (deg >= 90 && deg < 150) {
-                                                    System.out.println("GREEN");
+                                                    green++;
+                                                    // System.out.println("GREEN");
                                                 } else if (deg >= 150 && deg < 210) {
                                                     //  System.out.println("CYAN");
                                                 } else if (deg >= 210 && deg < 270) {
                                                     // System.out.println("BLUE");
+                                                    blue++;
                                                 } else if (deg >= 270 && deg < 330) {
                                                     // System.out.println("MAGENTA");
                                                 } else {
@@ -818,6 +931,16 @@ public class GUIController implements Initializable {
                                                 }
                                             }
                                         }
+                                    }
+                                    if (((double) green / (grabbedImage.getWidth() * grabbedImage.getHeight())) >= 0.2 && checkGreen) {
+                                        System.out.println("total green pixels: " + green + "/" + grabbedImage.getWidth() * grabbedImage.getHeight());
+                                        checkGreen = Boolean.FALSE;
+                                        start(0);
+                                    }
+                                    if (((double) blue / (grabbedImage.getWidth() * grabbedImage.getHeight())) >= 0.6 && checkBlue) {
+                                        System.out.println("total blue pixels: " + blue + "/" + grabbedImage.getWidth() * grabbedImage.getHeight());
+                                        checkBlue = Boolean.FALSE;
+                                        start(1);
                                     }
                                 }
                             });

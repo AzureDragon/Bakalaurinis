@@ -12,8 +12,9 @@ import org.zu.ardulink.Link;
  *
  * @author AzureDragon
  */
-public abstract class Direction implements Directions{
-    private DirectionMap path;
+public abstract class Direction implements Directions {
+
+    protected DirectionMap path;
     private Boolean active;
     private Button controller;
     protected Link controllerLink;
@@ -37,11 +38,4 @@ public abstract class Direction implements Directions{
     public Direction(DirectionMap path, Link link) {
         this.path = path;
     }
-
-    @Override
-    public void moveTo() {
-        
-    }
-    
-    
 }

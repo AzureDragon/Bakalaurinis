@@ -18,5 +18,6 @@ public interface Directions {
         LEFT
     }
 
-    public abstract void moveTo();
+    public abstract void moveTo(Integer pin);
+    public abstract void stopTo(Integer pin);
 }
